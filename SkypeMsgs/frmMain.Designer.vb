@@ -83,7 +83,6 @@ Partial Class frmMain
         dgvMessages.Location = New Point(4, 49)
         dgvMessages.MultiSelect = False
         dgvMessages.Name = "dgvMessages"
-        dgvMessages.ReadOnly = True
         dgvMessages.RowHeadersVisible = False
         dgvMessages.SelectionMode = DataGridViewSelectionMode.FullRowSelect
         dgvMessages.Size = New Size(702, 376)
@@ -93,14 +92,12 @@ Partial Class frmMain
         ' 
         Received.HeaderText = "Received"
         Received.Name = "Received"
-        Received.ReadOnly = True
         Received.Width = 140
         ' 
         ' Message
         ' 
         Message.HeaderText = "Message"
         Message.Name = "Message"
-        Message.ReadOnly = True
         Message.Width = 535
         ' 
         ' lblStatus

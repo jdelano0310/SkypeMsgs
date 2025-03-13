@@ -1,7 +1,6 @@
 ﻿Imports SkypeMsgs.clsMessages
 Imports System.Web
 Imports System.IO
-Imports Microsoft.AspNetCore.Components
 
 Public Class frmDateMessages
     Public clsMessages As clsMessages
@@ -88,18 +87,14 @@ Public Class frmDateMessages
         Return localTime
     End Function
 
-    Private Async Sub frmDateMessages_Load(sender As Object, e As EventArgs) Handles MyBase.Load
+    Private Sub frmDateMessages_Load(sender As Object, e As EventArgs) Handles MyBase.Load
 
         ' display the messages for the selected date
         Dim dateMessages As List(Of clsMessages.Message) = clsMessages.GetMessagesForDate(searchDate)
-        Dim htmlTest As String = $"<html><head><title>Messages for {searchDate}</title><style>tr {{display: block; padding-bottom: 5px}}</style></head><body><table style='width:95%;margin-left: auto; margin-right: auto'>#HTMLString#</table></body></html>"
-        Dim tempStr As String = ""
         Dim msgTime As String
         Dim lastFromName As String = ""
-        Dim tdStyle As String = "style='inline-size: 120ch; word-break: break-all; padding: 6px 6px 6px 6px;border-radius: 10px;background-color:{displayBGColor};width: 90%'"
-        Dim spanStyle As String = "style='color:#D3D3D3;font-size: 8pt; padding-left: 10px; width: 10%'"
-
-        htmlFileName = Path.Combine(Path.GetDirectoryName(Application.ExecutablePath), "temp.html")
+        Dim displayMessage As String = ""
+        Dim addRow As Boolean = False
 
         For Each msg As clsMessages.Message In dateMessages
 
@@ -117,12 +112,8 @@ Public Class frmDateMessages
                             displayName = ""
                         End If
 
-                        tdStyle = tdStyle.Replace("{displayBGColor}", displayBGColor) ' replace the placeholder with the actual color
-
-                        ' use the HttpUtility.HtmlDecode method to decode the HTML entities in the message content
-                        tempStr += $"<tr><td colspan=2>{displayName}</td></tr><tr><td {tdStyle}>{HttpUtility.HtmlDecode(msg.Content)}</td><td><span {spanStyle}>{msgTime}<span></td></tr>"
-
-                        tdStyle = tdStyle.Replace(displayBGColor, "{displayBGColor}") ' restore the placeholder
+                        displayMessage = msg.Content
+                        addRow = True
                     End If
 
                 Case "Event/Call"
@@ -131,39 +122,41 @@ Public Class frmDateMessages
                         eventCall = ParseCallDetails(msg.Content)
 
                         If eventCall.Duration > 0 Then
-                            tempStr += $"<tr><td colspan=2><b>{msgTime}</b>   {eventCall.FromName} called {eventCall.ToName} for {Format(eventCall.Duration / 60, "###.#0")} minutes</td></tr>"
+                            displayMessage = $"{eventCall.FromName} called {eventCall.ToName} for {Format(eventCall.Duration / 60, "###.#0")} minutes"
+                            displayBGColor = "#FFFFFF"
+                            displayName = "Ended"
                         Else
-                            tempStr += $"<tr><td colspan=2><b>{msgTime}</b>  {eventCall.ToName} <span style='color: red'>Missed</span> call from {eventCall.FromName}</td></tr>"
+                            displayMessage = $"{eventCall.ToName} Missed call from {eventCall.FromName}"
+                            displayBGColor = "#FF474C"
                         End If
 
+                        addRow = True
                     End If
             End Select
 
+            If addRow Then
+                dgvMessages.Rows.Add(displayName, HttpUtility.HtmlDecode(displayMessage), msgTime)
+                dgvMessages.Rows(dgvMessages.Rows.Count - 1).Cells(1).Style.BackColor = ColorTranslator.FromHtml(displayBGColor)
+                dgvMessages.Rows(dgvMessages.Rows.Count - 1).Cells(1).Style.SelectionBackColor = ColorTranslator.FromHtml(displayBGColor)
+            End If
+
+            addRow = False
         Next
 
-        ' place the HTML im a file for WebBrowser control to display
-        tempStr = tempStr.Replace(eventCall.ToIdentity, eventCall.ToName) ' replace the identity with the name
-        tempStr = tempStr.Replace(eventCall.FromIdentity, eventCall.FromName) ' replace the identity with the name
+        ' fix from name in the grid to the display name
+        For Each row As DataGridViewRow In dgvMessages.Rows
+            If row.Cells(0).Value = eventCall.FromIdentity Then
+                row.Cells(0).Value = eventCall.FromName
+            End If
 
-        htmlTest = htmlTest.Replace("#HTMLString#", tempStr)
-        File.WriteAllText(htmlFileName, htmlTest)
+            If row.Cells(0).Value = eventCall.ToIdentity Then
+                row.Cells(0).Value = eventCall.ToName
+            End If
+        Next
 
-        Await bwvMessages.WebView.EnsureCoreWebView2Async()
-
-        bwvMessages.WebView.CoreWebView2.Navigate("file:///" & htmlFileName)
     End Sub
 
     Private Sub frmDateMessages_FormClosing(sender As Object, e As FormClosingEventArgs) Handles MyBase.FormClosing
-
-        Try
-            ' delete the temporary HTML file, if this fails, it's not a big deal
-            If htmlFileName.Length > 0 Then
-                File.Delete(htmlFileName)
-            End If
-
-        Catch ex As Exception
-
-        End Try
 
     End Sub
 End Class
